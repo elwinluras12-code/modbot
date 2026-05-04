@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ModBot Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0c10;
+  --surface: #13141a;
+  --surface2: #1a1c24;
+  --surface3: #22253a;
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.15);
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --accent: #5865f2;
+  --accent-dim: rgba(88,101,242,0.15);
+  --accent2: #7c3aed;
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.12);
+  --orange: #f59e0b;
+  --orange-dim: rgba(245,158,11,0.12);
+  --yellow: #eab308;
+  --cyan: #06b6d4;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── LOGIN ── */
+#loginScreen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 30% 50%, rgba(88,101,242,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+              var(--bg);
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3rem 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-logo {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2rem;
+}
+
+.login-card h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: .5rem; }
+.login-card p { color: var(--muted); font-size: .95rem; margin-bottom: 2rem; line-height: 1.5; }
+
+.btn-discord {
+  display: inline-flex; align-items: center; gap: .75rem;
+  background: var(--accent);
+  color: white; border: none; border-radius: 12px;
+  padding: .9rem 2rem; font-size: 1rem; font-weight: 600;
+  cursor: pointer; transition: all .2s; width: 100%;
+  justify-content: center; text-decoration: none;
+}
+.btn-discord:hover { background: #4752c4; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(88,101,242,0.3); }
+
+/* ── APP LAYOUT ── */
+#app { display: none; }
+
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: .75rem;
+}
+
+.sidebar-logo {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+
+.sidebar-header h2 { font-size: 1rem; font-weight: 700; font-family: 'Space Mono', monospace; }
+.sidebar-header span { font-size: .7rem; color: var(--muted); display: block; }
+
+.guild-select-wrapper { padding: 1rem; border-bottom: 1px solid var(--border); }
+.guild-select-wrapper label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; display: block; margin-bottom: .5rem; }
+
+select {
+  width: 100%; background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .6rem .8rem; font-size: .85rem; cursor: pointer;
+  font-family: inherit;
+}
+select:focus { outline: none; border-color: var(--accent); }
+
+nav { flex: 1; padding: .75rem; overflow-y: auto; }
+
+.nav-section { margin-bottom: 1.25rem; }
+.nav-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; padding: 0 .5rem; margin-bottom: .4rem; }
+
+.nav-item {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .6rem .75rem; border-radius: 8px;
+  color: var(--muted); font-size: .9rem;
+  cursor: pointer; transition: all .15s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-item .icon { width: 18px; text-align: center; font-size: 1rem; }
+
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: .75rem;
+}
+.user-avatar-small {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent-dim); flex-shrink: 0;
+  overflow: hidden;
+}
+.user-avatar-small img { width: 100%; height: 100%; object-fit: cover; }
+.sidebar-footer .user-name { font-size: .85rem; font-weight: 500; }
+.logout-btn {
+  margin-left: auto; background: none; border: none;
+  color: var(--muted); cursor: pointer; font-size: 1rem;
+  padding: .25rem; border-radius: 6px; transition: color .15s;
+}
+.logout-btn:hover { color: var(--red); }
+
+.main { margin-left: 240px; padding: 2rem; min-height: 100vh; }
+
+.page-header { margin-bottom: 2rem; }
+.page-header h1 { font-size: 1.6rem; font-weight: 700; }
+.page-header p { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.card-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.stat-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stat-value { font-size: 2rem; font-weight: 700; font-family: 'Space Mono', monospace; line-height: 1; }
+.stat-card.accent { border-color: rgba(88,101,242,0.3); }
+.stat-card.accent .stat-value { color: var(--accent); }
+.stat-card.red { border-color: rgba(239,68,68,0.3); }
+.stat-card.red .stat-value { color: var(--red); }
+.stat-card.orange { border-color: rgba(245,158,11,0.3); }
+.stat-card.orange .stat-value { color: var(--orange); }
+.stat-card.green { border-color: rgba(34,197,94,0.3); }
+.stat-card.green .stat-value { color: var(--green); }
+
+/* ── TABLES ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .75rem 1rem; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); font-weight: 500; }
+td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+.member-cell { display: flex; align-items: center; gap: .75rem; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-dim); overflow: hidden; flex-shrink: 0; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; color: var(--accent); }
+.member-name { font-weight: 500; }
+.member-nick { font-size: .75rem; color: var(--muted); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .25rem .6rem; border-radius: 6px;
+  font-size: .75rem; font-weight: 600;
+}
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-blue { background: var(--accent-dim); color: var(--accent); }
+.badge-grey { background: rgba(107,114,128,0.15); color: var(--muted); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .5rem 1rem; border-radius: 8px;
+  font-size: .85rem; font-weight: 500; cursor: pointer;
+  border: none; transition: all .15s; font-family: inherit;
+}
+.btn-sm { padding: .3rem .7rem; font-size: .8rem; border-radius: 6px; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #4752c4; }
+.btn-danger { background: var(--red-dim); color: var(--red); }
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+.btn-warning { background: var(--orange-dim); color: var(--orange); }
+.btn-warning:hover { background: rgba(245,158,11,0.25); }
+.btn-success { background: var(--green-dim); color: var(--green); }
+.btn-success:hover { background: rgba(34,197,94,0.25); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border-hover); }
+.btn-group { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+/* ── SEARCH ── */
+.search-bar {
+  display: flex; align-items: center; gap: .5rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: .5rem .9rem;
+  transition: border-color .15s;
+}
+.search-bar:focus-within { border-color: var(--accent); }
+.search-bar input {
+  background: none; border: none; color: var(--text);
+  font-size: .9rem; flex: 1; font-family: inherit;
+}
+.search-bar input::placeholder { color: var(--muted); }
+.search-bar input:focus { outline: none; }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── ACTION PANEL ── */
+.action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.action-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.25rem;
+}
+.action-card h3 { font-size: .9rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: .4rem; }
+
+.form-group { margin-bottom: .75rem; }
+.form-group label { font-size: .75rem; color: var(--muted); display: block; margin-bottom: .3rem; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .55rem .75rem; color: var(--text);
+  font-size: .875rem; font-family: inherit; transition: border-color .15s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+
+/* ── LOG ENTRIES ── */
+.log-entry {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: .9rem 0; border-bottom: 1px solid var(--border);
+}
+.log-entry:last-child { border-bottom: none; }
+.log-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.log-content { flex: 1; min-width: 0; }
+.log-action { font-weight: 600; font-size: .875rem; }
+.log-meta { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+.log-time { font-size: .75rem; color: var(--muted); white-space: nowrap; font-family: 'Space Mono', monospace; }
+
+/* ── ACTION COLORS ── */
+.action-kick .log-icon { background: var(--orange-dim); }
+.action-ban .log-icon { background: var(--red-dim); }
+.action-unban .log-icon { background: var(--green-dim); }
+.action-warn .log-icon { background: var(--orange-dim); }
+.action-timeout .log-icon { background: rgba(6,182,212,0.12); }
+.action-untimeout .log-icon { background: var(--green-dim); }
+.action-clear .log-icon { background: var(--accent-dim); }
+.action-clearwarnings .log-icon { background: var(--green-dim); }
+.action-lock .log-icon { background: var(--red-dim); }
+.action-unlock .log-icon { background: var(--green-dim); }
+.action-slowmode .log-icon { background: rgba(6,182,212,0.12); }
+
+/* ── MODAL ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem; max-width: 480px; width: 90%;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.modal-header h3 { font-size: 1.1rem; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: .25rem; border-radius: 6px; }
+.modal-close:hover { color: var(--text); }
+.modal-actions { display: flex; gap: .75rem; margin-top: 1.5rem; justify-content: flex-end; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: .9rem 1.25rem;
+  font-size: .875rem; z-index: 2000; transform: translateY(100px);
+  transition: transform .3s; display: flex; align-items: center; gap: .5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+}
+#toast.show { transform: translateY(0); }
+#toast.success { border-color: rgba(34,197,94,0.4); }
+#toast.error { border-color: rgba(239,68,68,0.4); }
+
+/* ── EMPTY ── */
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: .5; }
+.empty-state p { font-size: .9rem; }
+
+/* ── FILTER ROW ── */
+.filter-row { display: flex; gap: .75rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.filter-row .search-bar { flex: 1; min-width: 200px; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+/* ── LOADING ── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-state { display: flex; align-items: center; justify-content: center; padding: 3rem; gap: 1rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🛡️</div>
+    <h1>ModBot Dashboard</h1>
+    <p>Sign in with Discord to manage your server's moderation settings, view logs, and take actions.</p>
+    <a href="http://localhost:5001/auth/login" class="btn-discord">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      Sign in with Discord
+    </a>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">🛡️</div>
+      <div>
+        <h2>ModBot</h2>
+        <span>Dashboard</span>
+      </div>
+    </div>
+    <div class="guild-select-wrapper">
+      <label>Server</label>
+      <select id="guildSelect" onchange="selectGuild(this.value)">
+        <option value="">Select a server...</option>
+      </select>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <button class="nav-item active" onclick="showPage('overview')">
+          <span class="icon">📊</span> Overview
+        </button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Moderation</div>
+        <button class="nav-item" onclick="showPage('members')">
+          <span class="icon">👥</span> Members
+        </button>
+        <button class="nav-item" onclick="showPage('warnings')">
+          <span class="icon">⚠️</span> Warnings
+        </button>
+        <button class="nav-item" onclick="showPage('actions')">
+          <span class="icon">⚡</span> Actions
+        </button>
+        <button class="nav-item" onclick="showPage('logs')">
+          <span class="icon">📋</span> Mod Logs
+        </button>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-avatar-small" id="sidebarAvatar"></div>
+      <span class="user-name" id="sidebarName">...</span>
+      <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <h1>Overview</h1>
+        <p>Server moderation summary</p>
+      </div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card accent"><div class="stat-label">Total Members</div><div class="stat-value" id="statMembers">—</div></div>
+        <div class="stat-card red"><div class="stat-label">Warned Members</div><div class="stat-value" id="statWarned">—</div></div>
+        <div class="stat-card orange"><div class="stat-label">Total Warnings</div><div class="stat-value" id="statWarnings">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Mod Actions</div><div class="stat-value" id="statActions">—</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📋 Recent Actions</div></div>
+          <div id="recentLogs"><div class="loading-state"><div class="spinner"></div> Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">⚠️ Top Warned Members</div></div>
+          <div id="topWarned"><div class="loading-state"><div class="spinner"></div> Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBERS -->
+    <div class="page" id="page-members">
+      <div class="page-header"><h1>Members</h1><p>All server members</p></div>
+      <div class="card">
+        <div class="filter-row">
+          <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="memberSearch" placeholder="Search members..." oninput="filterMembers()">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Member</th><th>Joined</th><th>Warnings</th><th>Actions</th></tr></thead>
+            <tbody id="membersTable"><tr><td colspan="4"><div class="loading-state"><div class="spinner"></div> Loading...</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- WARNINGS -->
+    <div class="page" id="page-warnings">
+      <div class="page-header"><h1>Warnings</h1><p>View and manage member warnings</p></div>
+      <div class="card">
+        <div class="filter-row">
+          <div class="search-bar" style="flex:1">
+            <span>🔍</span>
+            <input type="text" id="warnSearch" placeholder="Search by name or ID..." oninput="filterWarnings()">
+          </div>
+        </div>
+        <div id="warningsContent"><div class="loading-state"><div class="spinner"></div> Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="page" id="page-actions">
+      <div class="page-header"><h1>Actions</h1><p>Perform moderation actions from the dashboard</p></div>
+      <div class="action-grid">
+        <!-- KICK -->
+        <div class="action-card">
+          <h3>👢 Kick Member</h3>
+          <div class="form-group"><label>Member</label><select id="kickMember"><option value="">Select member...</option></select></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="kickReason" placeholder="No reason provided"></div>
+          <button class="btn btn-warning" onclick="doAction('kick')">Kick Member</button>
+        </div>
+        <!-- BAN -->
+        <div class="action-card">
+          <h3>🔨 Ban Member</h3>
+          <div class="form-group"><label>Member</label><select id="banMember"><option value="">Select member...</option></select></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="banReason" placeholder="No reason provided"></div>
+          <button class="btn btn-danger" onclick="doAction('ban')">Ban Member</button>
+        </div>
+        <!-- UNBAN -->
+        <div class="action-card">
+          <h3>✅ Unban User</h3>
+          <div class="form-group"><label>User ID</label><input type="text" id="unbanId" placeholder="Enter Discord user ID"></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="unbanReason" placeholder="No reason provided"></div>
+          <button class="btn btn-success" onclick="doAction('unban')">Unban User</button>
+        </div>
+        <!-- TIMEOUT -->
+        <div class="action-card">
+          <h3>⏱ Timeout Member</h3>
+          <div class="form-group"><label>Member</label><select id="timeoutMember"><option value="">Select member...</option></select></div>
+          <div class="form-group"><label>Duration (minutes)</label><input type="number" id="timeoutMinutes" placeholder="10" min="1" max="40320"></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="timeoutReason" placeholder="No reason provided"></div>
+          <button class="btn btn-warning" onclick="doAction('timeout')">Timeout Member</button>
+        </div>
+        <!-- UNTIMEOUT -->
+        <div class="action-card">
+          <h3>🔓 Remove Timeout</h3>
+          <div class="form-group"><label>Member</label><select id="untimeoutMember"><option value="">Select member...</option></select></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="untimeoutReason" placeholder="No reason provided"></div>
+          <button class="btn btn-success" onclick="doAction('untimeout')">Remove Timeout</button>
+        </div>
+        <!-- WARN -->
+        <div class="action-card">
+          <h3>⚠️ Warn Member</h3>
+          <div class="form-group"><label>Member</label><select id="warnMember"><option value="">Select member...</option></select></div>
+          <div class="form-group"><label>Reason</label><input type="text" id="warnReason" placeholder="Reason for warning"></div>
+          <button class="btn btn-warning" onclick="doAction('warn')">Warn Member</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="page" id="page-logs">
+      <div class="page-header"><h1>Mod Logs</h1><p>History of all moderation actions</p></div>
+      <div class="card">
+        <div class="filter-row">
+          <div class="search-bar" style="flex:1">
+            <span>🔍</span>
+            <input type="text" id="logSearch" placeholder="Search logs..." oninput="filterLogs()">
+          </div>
+          <select id="logFilter" onchange="filterLogs()" style="width:160px">
+            <option value="">All actions</option>
+            <option value="kick">Kick</option>
+            <option value="ban">Ban</option>
+            <option value="unban">Unban</option>
+            <option value="timeout">Timeout</option>
+            <option value="untimeout">Untimeout</option>
+            <option value="warn">Warn</option>
+            <option value="clearwarnings">Clear Warnings</option>
+            <option value="clear">Clear Messages</option>
+            <option value="lock">Lock</option>
+            <option value="unlock">Unlock</option>
+            <option value="slowmode">Slowmode</option>
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="clearLogs()">🗑 Clear All</button>
+        </div>
+        <div id="logsContent"><div class="loading-state"><div class="spinner"></div> Loading...</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Member Warnings Detail -->
+<div class="modal-backdrop" id="warnModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="warnModalTitle">Warnings</h3>
+      <button class="modal-close" onclick="closeModal('warnModal')">✕</button>
+    </div>
+    <div id="warnModalContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="clearMemberWarnings()">Clear All Warnings</button>
+      <button class="btn btn-ghost" onclick="closeModal('warnModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:5001';
+let token = null;
+let currentGuild = null;
+let allMembers = [];
+let allWarnings = {};
+let allLogs = [];
+let currentWarnUserId = null;
+let currentWarnUsername = null;
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('token');
+  if (t) {
+    token = t;
+    localStorage.setItem('mod_token', t);
+    window.history.replaceState({}, '', window.location.pathname);
+  } else {
+    token = localStorage.getItem('mod_token');
+  }
+  if (token) initApp();
+});
+
+async function initApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  try {
+    const user = await api('/api/me');
+    const avatarUrl = user.avatar
+      ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
+      : `https://cdn.discordapp.com/embed/avatars/0.png`;
+    document.getElementById('sidebarAvatar').innerHTML = `<img src="${avatarUrl}">`;
+    document.getElementById('sidebarName').textContent = user.username;
+    loadGuilds();
+  } catch { logout(); }
+}
+
+async function loadGuilds() {
+  const guilds = await api('/api/guilds');
+  const sel = document.getElementById('guildSelect');
+  guilds.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id; opt.textContent = g.name;
+    sel.appendChild(opt);
+  });
+  if (guilds.length === 1) {
+    sel.value = guilds[0].id;
+    selectGuild(guilds[0].id);
+  }
+}
+
+async function selectGuild(guildId) {
+  if (!guildId) return;
+  currentGuild = guildId;
+  await Promise.all([loadMembers(), loadWarnings(), loadLogs()]);
+  refreshOverview();
+}
+
+// ── API ──
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json();
+}
+
+// ── DATA LOADERS ──
+async function loadMembers() {
+  try {
+    allMembers = (await api(`/api/guild/${currentGuild}/members`)).filter(m => !m.bot);
+    renderMembers();
+    populateMemberSelects();
+  } catch (e) { console.error(e); }
+}
+
+async function loadWarnings() {
+  try {
+    allWarnings = await api(`/api/guild/${currentGuild}/warnings`);
+    renderWarnings();
+  } catch (e) { console.error(e); }
+}
+
+async function loadLogs() {
+  try {
+    allLogs = await api(`/api/guild/${currentGuild}/logs`);
+    renderLogs();
+  } catch (e) { console.error(e); }
+}
+
+// ── OVERVIEW ──
+function refreshOverview() {
+  document.getElementById('statMembers').textContent = allMembers.length;
+  const warned = Object.values(allWarnings).filter(w => w.length > 0).length;
+  const totalW = Object.values(allWarnings).reduce((a, w) => a + w.length, 0);
+  document.getElementById('statWarned').textContent = warned;
+  document.getElementById('statWarnings').textContent = totalW;
+  document.getElementById('statActions').textContent = allLogs.length;
+  renderRecentLogs();
+  renderTopWarned();
+}
+
+function renderRecentLogs() {
+  const el = document.getElementById('recentLogs');
+  const recent = allLogs.slice(0, 5);
+  if (!recent.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No actions yet</p></div>'; return; }
+  el.innerHTML = recent.map(l => logEntryHTML(l)).join('');
+}
+
+function renderTopWarned() {
+  const el = document.getElementById('topWarned');
+  const pairs = Object.entries(allWarnings).filter(([,w]) => w.length > 0).sort((a,b) => b[1].length - a[1].length).slice(0, 5);
+  if (!pairs.length) { el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No warnings issued</p></div>'; return; }
+  el.innerHTML = pairs.map(([uid, warns]) => {
+    const member = allMembers.find(m => m.id === uid);
+    const name = member ? (member.nick || member.username) : uid;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.875rem">${name}</span>
+      <span class="badge badge-orange">⚠️ ${warns.length}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── MEMBERS ──
+function renderMembers(filter = '') {
+  const tbody = document.getElementById('membersTable');
+  const filtered = allMembers.filter(m =>
+    (m.username || '').toLowerCase().includes(filter.toLowerCase()) ||
+    (m.nick || '').toLowerCase().includes(filter.toLowerCase()) ||
+    m.id.includes(filter)
+  );
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="icon">👥</div><p>No members found</p></div></td></tr>'; return; }
+  tbody.innerHTML = filtered.map(m => {
+    const avatarUrl = m.avatar
+      ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=64`
+      : null;
+    const avatarHTML = avatarUrl
+      ? `<img src="${avatarUrl}" onerror="this.parentElement.innerHTML='<div class=avatar-placeholder>${(m.username||'?')[0].toUpperCase()}</div>'">`
+      : `<div class="avatar-placeholder">${(m.username||'?')[0].toUpperCase()}</div>`;
+    const warns = (allWarnings[m.id] || []).length;
+    const warnBadge = warns > 0 ? `<span class="badge badge-orange">⚠️ ${warns}</span>` : `<span class="badge badge-grey">0</span>`;
+    const joined = m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '—';
+    return `<tr>
+      <td><div class="member-cell"><div class="avatar">${avatarHTML}</div><div><div class="member-name">${m.username}</div>${m.nick ? `<div class="member-nick">${m.nick}</div>` : ''}</div></div></td>
+      <td style="color:var(--muted);font-size:.8rem">${joined}</td>
+      <td>${warnBadge}</td>
+      <td><div class="btn-group">
+        <button class="btn btn-sm btn-warning" onclick="openWarnModal('${m.id}','${(m.nick||m.username).replace(/'/g,"\\'")}')">Warnings</button>
+        <button class="btn btn-sm btn-danger" onclick="quickAction('kick','${m.id}','${(m.nick||m.username).replace(/'/g,"\\'")}')">Kick</button>
+        <button class="btn btn-sm btn-danger" onclick="quickAction('ban','${m.id}','${(m.nick||m.username).replace(/'/g,"\\'")}')">Ban</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterMembers() { renderMembers(document.getElementById('memberSearch').value); }
+
+// ── WARNINGS ──
+function renderWarnings(filter = '') {
+  const el = document.getElementById('warningsContent');
+  const pairs = Object.entries(allWarnings).filter(([uid, w]) => {
+    if (!w.length) return false;
+    const member = allMembers.find(m => m.id === uid);
+    const name = member ? (member.username || '') : uid;
+    return name.toLowerCase().includes(filter.toLowerCase()) || uid.includes(filter);
+  });
+  if (!pairs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No warnings found</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Member</th><th>Warnings</th><th>Last Warning</th><th>Actions</th></tr></thead>
+    <tbody>${pairs.sort((a,b) => b[1].length - a[1].length).map(([uid, warns]) => {
+      const member = allMembers.find(m => m.id === uid);
+      const name = member ? (member.nick || member.username) : uid;
+      const last = warns[warns.length-1] ? new Date(warns[warns.length-1].time).toLocaleDateString() : '—';
+      return `<tr>
+        <td><div class="member-cell"><div class="avatar"><div class="avatar-placeholder">${name[0]?.toUpperCase()}</div></div><span>${name}</span></div></td>
+        <td><span class="badge badge-orange">⚠️ ${warns.length}</span></td>
+        <td style="color:var(--muted);font-size:.8rem">${last}</td>
+        <td><div class="btn-group">
+          <button class="btn btn-sm btn-ghost" onclick="openWarnModal('${uid}','${name.replace(/'/g,"\\'")}')">View</button>
+          <button class="btn btn-sm btn-danger" onclick="clearMemberWarningsDirect('${uid}','${name.replace(/'/g,"\\'")}')">Clear</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function filterWarnings() { renderWarnings(document.getElementById('warnSearch').value); }
+
+// ── WARN MODAL ──
+function openWarnModal(userId, username) {
+  currentWarnUserId = userId;
+  currentWarnUsername = username;
+  document.getElementById('warnModalTitle').textContent = `Warnings — ${username}`;
+  const warns = allWarnings[userId] || [];
+  const el = document.getElementById('warnModalContent');
+  if (!warns.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No warnings</p></div>';
+  } else {
+    el.innerHTML = warns.map((w, i) => `
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;margin-bottom:.75rem;display:flex;align-items:flex-start;gap:1rem">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:.3rem">Warning #${i+1}</div>
+          <div style="font-size:.875rem;color:var(--muted)">${w.reason}</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">${new Date(w.time).toLocaleString()}</div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="removeWarning(${i})">Remove</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('warnModal').classList.add('open');
+}
+
+async function removeWarning(index) {
+  try {
+    await fetch(`${API}/api/guild/${currentGuild}/warnings/${currentWarnUserId}/remove/${index}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    await loadWarnings();
+    openWarnModal(currentWarnUserId, currentWarnUsername);
+    refreshOverview();
+    showToast('Warning removed', 'success');
+  } catch { showToast('Failed to remove warning', 'error'); }
+}
+
+async function clearMemberWarnings() {
+  if (!currentWarnUserId) return;
+  await clearMemberWarningsDirect(currentWarnUserId, currentWarnUsername);
+  closeModal('warnModal');
+}
+
+async function clearMemberWarningsDirect(userId, username) {
+  try {
+    await fetch(`${API}/api/guild/${currentGuild}/warnings/${userId}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    await loadWarnings();
+    refreshOverview();
+    showToast(`Cleared warnings for ${username}`, 'success');
+  } catch { showToast('Failed to clear warnings', 'error'); }
+}
+
+// ── LOGS ──
+const ACTION_ICONS = {
+  kick:'👢', ban:'🔨', unban:'✅', warn:'⚠️', timeout:'⏱', untimeout:'🔓',
+  clear:'🧹', clearwarnings:'🗑️', lock:'🔒', unlock:'🔓', slowmode:'🐢'
+};
+
+function logEntryHTML(l) {
+  const timeAgo = formatTimeAgo(l.time);
+  const icon = ACTION_ICONS[l.action] || '⚡';
+  return `<div class="log-entry action-${l.action}">
+    <div class="log-icon">${icon}</div>
+    <div class="log-content">
+      <div class="log-action">${l.action.toUpperCase()} — ${l.target}</div>
+      <div class="log-meta">by ${l.moderator} · ${l.reason}${l.extra ? ` · ${l.extra}` : ''}</div>
+    </div>
+    <div class="log-time">${timeAgo}</div>
+  </div>`;
+}
+
+function renderLogs(filter = '', actionFilter = '') {
+  const el = document.getElementById('logsContent');
+  let filtered = allLogs;
+  if (filter) filtered = filtered.filter(l =>
+    l.target?.toLowerCase().includes(filter.toLowerCase()) ||
+    l.moderator?.toLowerCase().includes(filter.toLowerCase()) ||
+    l.reason?.toLowerCase().includes(filter.toLowerCase())
+  );
+  if (actionFilter) filtered = filtered.filter(l => l.action === actionFilter);
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No logs found</p></div>'; return; }
+  el.innerHTML = filtered.map(l => logEntryHTML(l)).join('');
+}
+
+function filterLogs() {
+  renderLogs(document.getElementById('logSearch').value, document.getElementById('logFilter').value);
+}
+
+async function clearLogs() {
+  if (!confirm('Clear all mod logs for this server?')) return;
+  try {
+    await fetch(`${API}/api/guild/${currentGuild}/logs/clear`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    await loadLogs();
+    refreshOverview();
+    showToast('Logs cleared', 'success');
+  } catch { showToast('Failed to clear logs', 'error'); }
+}
+
+// ── ACTIONS ──
+function populateMemberSelects() {
+  const selects = ['kickMember','banMember','timeoutMember','untimeoutMember','warnMember'];
+  selects.forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">Select member...</option>';
+    allMembers.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.nick ? `${m.username} (${m.nick})` : m.username;
+      opt.dataset.username = m.username;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function doAction(type) {
+  if (!currentGuild) { showToast('Select a server first', 'error'); return; }
+  let body = {};
+  if (type === 'unban') {
+    const id = document.getElementById('unbanId').value.trim();
+    const reason = document.getElementById('unbanReason').value.trim() || 'No reason provided';
+    if (!id) { showToast('Enter a user ID', 'error'); return; }
+    body = { user_id: id, username: id, reason };
+  } else {
+    const sel = document.getElementById(`${type}Member`);
+    const userId = sel.value;
+    if (!userId) { showToast('Select a member', 'error'); return; }
+    const username = sel.options[sel.selectedIndex]?.dataset.username || userId;
+    const reason = document.getElementById(`${type}Reason`).value.trim() || 'No reason provided';
+    body = { user_id: userId, username, reason };
+    if (type === 'timeout') body.minutes = parseInt(document.getElementById('timeoutMinutes').value) || 10;
+  }
+  try {
+    await api(`/api/guild/${currentGuild}/action/${type}`, { method: 'POST', body: JSON.stringify(body) });
+    showToast(`✅ ${type.charAt(0).toUpperCase()+type.slice(1)} action performed`, 'success');
+    await Promise.all([loadMembers(), loadWarnings(), loadLogs()]);
+    refreshOverview();
+  } catch (e) {
+    showToast(`❌ Action failed: ${e.message}`, 'error');
+  }
+}
+
+async function quickAction(type, userId, username) {
+  if (!currentGuild) return;
+  const reason = prompt(`Reason for ${type}ing ${username}?`) || 'No reason provided';
+  try {
+    await api(`/api/guild/${currentGuild}/action/${type}`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, username, reason })
+    });
+    showToast(`✅ ${username} ${type}ed`, 'success');
+    await Promise.all([loadMembers(), loadWarnings(), loadLogs()]);
+    refreshOverview();
+  } catch { showToast(`❌ ${type} failed`, 'error'); }
+}
+
+// ── UI HELPERS ──
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function logout() {
+  localStorage.removeItem('mod_token');
+  token = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+}
+
+function formatTimeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+</script>
+</body>
+</html>

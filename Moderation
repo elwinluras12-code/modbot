@@ -1,0 +1,299 @@
+import discord
+from discord.ext import commands
+from datetime import datetime, timedelta
+import json
+import os
+
+# ---------------- CONFIG ---------------- #
+GUILD_ID = 1500279036671295588
+TOKEN = ''  # ← Put your bot token here
+
+# ---------------- BOT SETUP ---------------- #
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+class Client(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents)
+
+    async def setup_hook(self):
+        await self.add_cog(ModerationCog(self))
+        print("✅ Moderation cog loaded!")
+        try:
+            guild = discord.Object(id=GUILD_ID)
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+            print(f"✅ Slash commands synced to guild {GUILD_ID}")
+        except Exception as e:
+            print(f"⚠️ Sync failed on startup: {e}")
+
+    async def on_ready(self):
+        print(f"✅ Logged in as {self.user} (ID: {self.user.id})")
+
+
+# ---------------- DATA HANDLING ---------------- #
+DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {"warnings": {}, "mod_logs": []}
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if "mod_logs" not in data:
+                data["mod_logs"] = []
+            return data
+    except Exception as e:
+        print(f"⚠️ Error loading data.json: {e}")
+        return {"warnings": {}, "mod_logs": []}
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+def log_action(guild_id: int, moderator: str, moderator_id: int, action: str, target: str, target_id: int, reason: str):
+    data = load_data()
+    data["mod_logs"].append({
+        "guild_id": str(guild_id),
+        "moderator": moderator,
+        "moderator_id": str(moderator_id),
+        "action": action,
+        "target": target,
+        "target_id": str(target_id),
+        "reason": reason,
+        "time": discord.utils.utcnow().isoformat()
+    })
+    # Keep only last 500 logs
+    if len(data["mod_logs"]) > 500:
+        data["mod_logs"] = data["mod_logs"][-500:]
+    save_data(data)
+
+def get_warnings(guild_id: int, user_id: int):
+    data = load_data()
+    gid = str(guild_id)
+    uid = str(user_id)
+    return data.get("warnings", {}).get(gid, {}).get(uid, [])
+
+def add_warning(guild_id: int, user_id: int, reason: str):
+    data = load_data()
+    gid = str(guild_id)
+    uid = str(user_id)
+    data.setdefault("warnings", {}).setdefault(gid, {}).setdefault(uid, [])
+    data["warnings"][gid][uid].append({
+        "reason": reason,
+        "time": discord.utils.utcnow().isoformat()
+    })
+    save_data(data)
+
+def clear_warnings(guild_id: int, user_id: int):
+    data = load_data()
+    gid = str(guild_id)
+    uid = str(user_id)
+    if "warnings" in data and gid in data["warnings"] and uid in data["warnings"][gid]:
+        data["warnings"][gid][uid] = []
+        save_data(data)
+        return True
+    return False
+
+
+# ---------------- MODERATION COG ---------------- #
+class ModerationCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    async def has_permission(self, interaction: discord.Interaction, perm: str, action: str) -> bool:
+        if not getattr(interaction.user.guild_permissions, perm, False):
+            await interaction.response.send_message(f"❌ You don't have permission to {action}!", ephemeral=True)
+            return False
+        if not getattr(interaction.guild.me.guild_permissions, perm, False):
+            await interaction.response.send_message(f"❌ I don't have permission to {action}!", ephemeral=True)
+            return False
+        return True
+
+    @discord.app_commands.command(name="kick", description="Kick a member")
+    async def kick(self, interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "kick_members", "kick members"):
+            return
+        await member.kick(reason=f"Kicked by {interaction.user} | {reason}")
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "kick", str(member), member.id, reason)
+        await interaction.response.send_message(f"👢 Kicked **{member}** | Reason: {reason}")
+
+    @discord.app_commands.command(name="ban", description="Ban a member")
+    async def ban(self, interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "ban_members", "ban members"):
+            return
+        await member.ban(reason=f"Banned by {interaction.user} | {reason}")
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "ban", str(member), member.id, reason)
+        await interaction.response.send_message(f"🔨 Banned **{member}** | Reason: {reason}")
+
+    @discord.app_commands.command(name="unban", description="Unban a user by their ID")
+    async def unban(self, interaction: discord.Interaction, user_id: str, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "ban_members", "unban members"):
+            return
+        try:
+            user = await self.bot.fetch_user(int(user_id))
+            await interaction.guild.unban(user, reason=f"Unbanned by {interaction.user} | {reason}")
+            log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "unban", str(user), user.id, reason)
+            await interaction.response.send_message(f"✅ Unbanned **{user}** | Reason: {reason}")
+        except discord.NotFound:
+            await interaction.response.send_message("❌ User not found or not banned.", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ Invalid user ID.", ephemeral=True)
+
+    @discord.app_commands.command(name="timeout", description="Timeout a member")
+    async def timeout(self, interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "moderate_members", "timeout members"):
+            return
+        if minutes < 1 or minutes > 40320:
+            await interaction.response.send_message("❌ Minutes must be between 1 and 40320 (28 days)", ephemeral=True)
+            return
+        until = discord.utils.utcnow() + timedelta(minutes=minutes)
+        await member.timeout(until, reason=f"Timed out by {interaction.user} | {reason}")
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "timeout", str(member), member.id, f"{minutes}min | {reason}")
+        await interaction.response.send_message(f"⏱ Timed out **{member}** for {minutes} minutes | Reason: {reason}")
+
+    @discord.app_commands.command(name="untimeout", description="Remove timeout from a member")
+    async def untimeout(self, interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "moderate_members", "remove timeouts"):
+            return
+        await member.timeout(None, reason=f"Timeout removed by {interaction.user} | {reason}")
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "untimeout", str(member), member.id, reason)
+        await interaction.response.send_message(f"✅ Removed timeout from **{member}**")
+
+    @discord.app_commands.command(name="warn", description="Warn a member")
+    async def warn(self, interaction: discord.Interaction, member: discord.Member, reason: str):
+        if not await self.has_permission(interaction, "moderate_members", "warn members"):
+            return
+        if member.id == interaction.user.id:
+            return await interaction.response.send_message("❌ You can't warn yourself!", ephemeral=True)
+        add_warning(interaction.guild.id, member.id, reason)
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "warn", str(member), member.id, reason)
+        try:
+            embed = discord.Embed(
+                title="⚠️ You Received a Warning",
+                description=f"**Server:** {interaction.guild.name}\n**Reason:** {reason}",
+                color=discord.Color.orange(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_footer(text=f"Warned by {interaction.user}")
+            await member.send(embed=embed)
+            dm_status = "✅ Warning DM sent."
+        except discord.Forbidden:
+            dm_status = "⚠️ Could not send DM."
+        await interaction.response.send_message(f"⚠️ **{member}** has been warned.\n{dm_status}\n**Reason:** {reason}")
+
+    @discord.app_commands.command(name="warnings", description="View warnings for a member")
+    async def warnings(self, interaction: discord.Interaction, member: discord.Member):
+        if not await self.has_permission(interaction, "moderate_members", "view warnings"):
+            return
+        warns = get_warnings(interaction.guild.id, member.id)
+        if not warns:
+            return await interaction.response.send_message(f"✅ **{member}** has **0** warnings.")
+        embed = discord.Embed(title=f"Warnings for {member}", description=f"**Total:** {len(warns)}", color=discord.Color.orange())
+        for i, w in enumerate(warns, 1):
+            time_str = datetime.fromisoformat(w["time"]).strftime("%Y-%m-%d %H:%M UTC")
+            embed.add_field(name=f"Warning #{i}", value=f"**Reason:** {w['reason']}\n**Time:** {time_str}", inline=False)
+        await interaction.response.send_message(embed=embed)
+
+    @discord.app_commands.command(name="clearwarnings", description="Clear all warnings for a member")
+    async def clearwarnings(self, interaction: discord.Interaction, member: discord.Member):
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("❌ Only administrators can clear warnings!", ephemeral=True)
+        if clear_warnings(interaction.guild.id, member.id):
+            log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "clearwarnings", str(member), member.id, "All warnings cleared")
+            await interaction.response.send_message(f"✅ All warnings for **{member}** cleared.")
+        else:
+            await interaction.response.send_message(f"✅ **{member}** had no warnings to clear.")
+
+    @discord.app_commands.command(name="clear", description="Clear messages in this channel")
+    async def clear(self, interaction: discord.Interaction, amount: int):
+        if not await self.has_permission(interaction, "manage_messages", "manage messages"):
+            return
+        if not (1 <= amount <= 100):
+            await interaction.response.send_message("❌ Amount must be between 1 and 100", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        deleted = await interaction.channel.purge(limit=amount)
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "clear", f"#{interaction.channel.name}", interaction.channel.id, f"Deleted {len(deleted)} messages")
+        await interaction.followup.send(f"🧹 Deleted **{len(deleted)}** messages", ephemeral=True)
+
+    @discord.app_commands.command(name="slowmode", description="Set slowmode in this channel")
+    async def slowmode(self, interaction: discord.Interaction, seconds: int):
+        if not await self.has_permission(interaction, "manage_channels", "manage channels"):
+            return
+        if seconds < 0 or seconds > 21600:
+            await interaction.response.send_message("❌ Seconds must be between 0 and 21600", ephemeral=True)
+            return
+        await interaction.channel.edit(slowmode_delay=seconds)
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "slowmode", f"#{interaction.channel.name}", interaction.channel.id, f"{seconds}s")
+        msg = f"🐢 Slowmode set to **{seconds}s** in {interaction.channel.mention}" if seconds > 0 else f"✅ Slowmode disabled in {interaction.channel.mention}"
+        await interaction.response.send_message(msg)
+
+    @discord.app_commands.command(name="lock", description="Lock a channel")
+    async def lock(self, interaction: discord.Interaction, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "manage_channels", "lock channels"):
+            return
+        overwrite = interaction.channel.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages = False
+        await interaction.channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "lock", f"#{interaction.channel.name}", interaction.channel.id, reason)
+        await interaction.response.send_message(f"🔒 **{interaction.channel.name}** has been locked. | Reason: {reason}")
+
+    @discord.app_commands.command(name="unlock", description="Unlock a channel")
+    async def unlock(self, interaction: discord.Interaction, reason: str = "No reason provided"):
+        if not await self.has_permission(interaction, "manage_channels", "unlock channels"):
+            return
+        overwrite = interaction.channel.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages = None
+        await interaction.channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        log_action(interaction.guild.id, str(interaction.user), interaction.user.id, "unlock", f"#{interaction.channel.name}", interaction.channel.id, reason)
+        await interaction.response.send_message(f"🔓 **{interaction.channel.name}** has been unlocked. | Reason: {reason}")
+
+    @discord.app_commands.command(name="userinfo", description="View info about a member")
+    async def userinfo(self, interaction: discord.Interaction, member: discord.Member = None):
+        member = member or interaction.user
+        warns = get_warnings(interaction.guild.id, member.id)
+        roles = [r.mention for r in member.roles if r.name != "@everyone"]
+        embed = discord.Embed(title=f"User Info — {member}", color=member.color, timestamp=discord.utils.utcnow())
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.add_field(name="ID", value=f"`{member.id}`", inline=True)
+        embed.add_field(name="Nickname", value=member.nick or "None", inline=True)
+        embed.add_field(name="Warnings", value=str(len(warns)), inline=True)
+        embed.add_field(name="Account Created", value=f"<t:{int(member.created_at.timestamp())}:R>", inline=True)
+        embed.add_field(name="Joined Server", value=f"<t:{int(member.joined_at.timestamp())}:R>" if member.joined_at else "Unknown", inline=True)
+        embed.add_field(name="Timed Out", value="Yes" if member.timed_out_until else "No", inline=True)
+        embed.add_field(name=f"Roles ({len(roles)})", value=", ".join(roles) if roles else "None", inline=False)
+        await interaction.response.send_message(embed=embed)
+
+    @discord.app_commands.command(name="serverinfo", description="View info about this server")
+    async def serverinfo(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        embed = discord.Embed(title=f"Server Info — {guild.name}", color=discord.Color.blurple(), timestamp=discord.utils.utcnow())
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        embed.add_field(name="ID", value=f"`{guild.id}`", inline=True)
+        embed.add_field(name="Owner", value=f"<@{guild.owner_id}>", inline=True)
+        embed.add_field(name="Members", value=str(guild.member_count), inline=True)
+        embed.add_field(name="Channels", value=str(len(guild.channels)), inline=True)
+        embed.add_field(name="Roles", value=str(len(guild.roles)), inline=True)
+        embed.add_field(name="Created", value=f"<t:{int(guild.created_at.timestamp())}:R>", inline=True)
+        await interaction.response.send_message(embed=embed)
+
+    @commands.command()
+    @commands.is_owner()
+    async def sync(self, ctx):
+        await ctx.send("Syncing commands...")
+        try:
+            guild = discord.Object(id=GUILD_ID)
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+            await ctx.send(f"✅ Synced to test guild `{GUILD_ID}`")
+        except Exception as e:
+            await ctx.send(f"❌ Sync failed: {e}")
+
+
+# ---------------- RUN ---------------- #
+if __name__ == "__main__":
+    client = Client()
+    client.run(TOKEN)
